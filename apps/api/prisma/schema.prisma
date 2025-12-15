@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum KmsProvider {
+  aws
+  gcp
+  azure
+}
+
+enum SecretScope {
+  app
+  whmcs
+  provider
+}
+
+enum ProviderType {
+  hetzner
+  contabo
+  datawagon
+  digitalocean
+  vultr
+  linode
+}
+
+enum ServerStatus {
+  pending
+  provisioning
+  active
+  suspended
+  stopped
+  terminated
+  error
+}
+
+enum ActionType {
+  create
+  suspend
+  reboot
+  terminate
+  reinstall
+  power_on
+  power_off
+}
+
+enum ActionStatus {
+  queued
+  running
+  succeeded
+  failed
+}
+
+enum ActorType {
+  user
+  admin
+  system
+}
+
+model KmsKey {
+  id        String      @id @default(uuid())
+  provider  KmsProvider
+  keyId     String
+  region    String?
+  purpose   String      // e.g. "envelope"
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  secrets   Secret[]
+
+  @@unique([provider, keyId, region, purpose])
+  @@index([purpose])
+}
+
+model WhmcsConnection {
+  id                 String   @id @default(uuid())
+  baseUrl            String
+  apiIdentifier      String
+  apiSecretSecretId  String?  @unique
+  status             String   @default("disconnected")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  apiSecret Secret? @relation("WhmcsApiSecret", fields: [apiSecretSecretId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model Secret {
+  id            String      @id @default(uuid())
+  scope         SecretScope
+  name          String
+  version       Int         @default(1)
+
+  // Encrypted secret (AES-256-GCM) and encrypted DEK (envelope). Store only ciphertext in DB.
+  ciphertext    Bytes
+  encryptedDek  Bytes
+  iv            Bytes
+  tag           Bytes
+  aad           Json?
+
+  kmsKeyId      String
+  kmsKey        KmsKey       @relation(fields: [kmsKeyId], references: [id], onDelete: Restrict)
+
+  // Rotation / lifecycle
+  isActive      Boolean      @default(true)
+  rotatedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  whmcsApiSecretFor WhmcsConnection? @relation("WhmcsApiSecret")
+  providerCredentials ProviderCredential[]
+
+  @@unique([scope, name, version])
+  @@index([scope, isActive])
+  @@index([scope, name, isActive])
+  @@index([kmsKeyId])
+}
+
+model Provider {
+  id          String       @id @default(uuid())
+  type        ProviderType
+  displayName String
+  enabled     Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  credentials ProviderCredential[]
+  mappings    ProductMapping[]
+  servers     ServerInstance[]
+
+  @@index([type, enabled])
+}
+
+model ProviderCredential {
+  id                String   @id @default(uuid())
+  providerId        String
+  label             String
+  secretId          String
+  createdByWhmcsUserId Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  secret   Secret   @relation(fields: [secretId], references: [id], onDelete: Restrict)
+
+  mappings ProductMapping[]
+
+  @@index([providerId])
+  @@index([secretId])
+  @@unique([providerId, label])
+}
+
+model ProductMapping {
+  id            String   @id @default(uuid())
+  whmcsProductId Int
+  providerId    String
+  credentialId  String
+  planRef       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider   Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  credential ProviderCredential @relation(fields: [credentialId], references: [id], onDelete: Restrict)
+
+  @@unique([whmcsProductId])
+  @@index([providerId])
+  @@index([credentialId])
+}
+
+model ServerInstance {
+  id               String       @id @default(uuid())
+  whmcsServiceId   Int          @unique
+  providerId       String
+  providerResourceId String     @unique
+  status           ServerStatus @default(pending)
+  region           String?
+  ip               String?
+  metadata         Json         @default("{}")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  actions  ActionRequest[]
+
+  @@index([providerId, status])
+}
+
+model ActionRequest {
+  id              String       @id @default(uuid())
+  whmcsUserId     Int
+  whmcsServiceId  Int
+  action          ActionType
+  status          ActionStatus @default(queued)
+  idempotencyKey  String       @unique
+  requestedAt     DateTime     @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  error           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  server ServerInstance? @relation(fields: [whmcsServiceId], references: [whmcsServiceId], onDelete: SetNull)
+
+  @@index([whmcsUserId])
+  @@index([whmcsServiceId])
+  @@index([status, action])
+}
+
+model WebhookDelivery {
+  id          String   @id @default(uuid())
+  event       String
+  dedupeHash  String?  @unique
+  headers     Json
+  payload     Json
+  verified    Boolean  @default(false)
+  processedAt DateTime?
+  result      Json?
+  createdAt   DateTime @default(now())
+
+  @@index([event, verified])
+  @@index([processedAt])
+}
+
+model AuditLog {
+  id            String    @id @default(uuid())
+  actorType     ActorType
+  actorWhmcsId  Int?
+  action        String
+  targetType    String
+  targetId      String?
+  ip            String?
+  userAgent     String?
+  details       Json      @default("{}")
+  createdAt     DateTime  @default(now())
+
+  @@index([actorType, actorWhmcsId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model AppConfig {
+  id                   String   @id @default("singleton")
+  adminClientGroupId   Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AuthSession {
+  id               String   @id @default(uuid())
+  whmcsUserId      Int
+  refreshTokenHash String   @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdByIp      String?
+  createdByUserAgent String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([whmcsUserId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+
