@@ -2,6 +2,23 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  UserPlus,
+  Cloud,
+  AlertCircle,
+  User,
+  Phone,
+  Building,
+  MapPin,
+  ArrowRight,
+  LogIn,
+  CheckCircle,
+} from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
@@ -24,6 +41,8 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -91,142 +110,300 @@ export default function RegisterPage() {
     label, 
     type = 'text', 
     placeholder, 
-    required = false 
+    required = false,
+    icon: Icon,
   }: { 
     name: keyof typeof formData; 
     label: string; 
     type?: string; 
     placeholder: string; 
     required?: boolean;
+    icon?: React.ElementType;
   }) => (
     <div>
-      <label htmlFor={name} className="block text-xs font-medium text-[#888] mb-1.5">
-        {label} {required && <span className="text-[#666]">*</span>}
+      <label htmlFor={name} className="block text-sm font-medium text-[var(--foreground)] mb-2">
+        {label} {required && <span className="text-[var(--error)]">*</span>}
       </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        className={`w-full px-3 py-2 text-sm bg-black border rounded-md text-white placeholder-[#666] focus:outline-none focus:border-[#666] transition-colors ${
-          errors[name] ? 'border-[#7f1d1d]' : 'border-[#333]'
-        }`}
-        placeholder={placeholder}
-        value={formData[name]}
-        onChange={handleChange}
-        disabled={loading}
-      />
-      {errors[name] && <p className="text-xs text-[#f87171] mt-1">{errors[name]}</p>}
+      <div className="input-with-icon">
+        {Icon && <Icon className="input-icon w-4 h-4" />}
+        <input
+          id={name}
+          name={name}
+          type={type}
+          className={`input ${errors[name] ? 'border-[var(--error)]' : ''}`}
+          placeholder={placeholder}
+          value={formData[name]}
+          onChange={handleChange}
+          disabled={loading}
+          required={required}
+        />
+      </div>
+      {errors[name] && (
+        <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {errors[name]}
+        </p>
+      )}
     </div>
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-black">
-      <div className="w-full max-w-lg">
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-white rounded-full mb-4">
-            <svg className="w-5 h-5 text-black" viewBox="0 0 76 65" fill="currentColor">
-              <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-            </svg>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--background)] py-12">
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="card p-8"
+        >
+          {/* Logo & Header */}
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] mb-6 shadow-lg shadow-blue-500/20"
+            >
+              <Cloud className="w-8 h-8 text-white" />
+            </motion.div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">Create your account</h1>
+            <p className="text-[var(--foreground-muted)]">Get started with your free account today</p>
           </div>
-          <h1 className="text-xl font-medium text-white">Create your account</h1>
-        </div>
 
-        {/* Form */}
-        <div className="bg-[#0a0a0a] border border-[#333] rounded-lg p-5">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Error Message */}
+          {errors.submit && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 rounded-xl bg-[var(--error-soft)] border border-[var(--error)]/30"
+            >
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-[var(--error)] flex-shrink-0" />
+                <p className="text-sm text-[var(--error)]">{errors.submit}</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-3">
-              <InputField name="firstname" label="First name" placeholder="John" required />
-              <InputField name="lastname" label="Last name" placeholder="Doe" required />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <InputField 
+                name="firstname" 
+                label="First name" 
+                placeholder="John" 
+                required 
+                icon={User}
+              />
+              <InputField 
+                name="lastname" 
+                label="Last name" 
+                placeholder="Doe" 
+                required 
+                icon={User}
+              />
             </div>
 
             {/* Email */}
-            <InputField name="email" label="Email" type="email" placeholder="you@example.com" required />
+            <InputField 
+              name="email" 
+              label="Email address" 
+              type="email" 
+              placeholder="you@example.com" 
+              required 
+              icon={Mail}
+            />
 
             {/* Password Fields */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label htmlFor="password" className="block text-xs font-medium text-[#888] mb-1.5">
-                  Password <span className="text-[#666]">*</span>
+                <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                  Password <span className="text-[var(--error)]">*</span>
                 </label>
-                <div className="relative">
+                <div className="input-with-icon">
+                  <Lock className="input-icon w-4 h-4" />
                   <input
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
-                    className={`w-full px-3 py-2 text-sm bg-black border rounded-md text-white placeholder-[#666] focus:outline-none focus:border-[#666] transition-colors pr-9 ${
-                      errors.password ? 'border-[#7f1d1d]' : 'border-[#333]'
-                    }`}
+                    className={`input pr-12 ${errors.password ? 'border-[var(--error)]' : ''}`}
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
                     disabled={loading}
+                    required
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                     tabIndex={-1}
                   >
-                    <svg className="w-3.5 h-3.5 text-[#666]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {showPassword ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      ) : (
-                        <>
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </>
-                      )}
-                    </svg>
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
-                {errors.password && <p className="text-xs text-[#f87171] mt-1">{errors.password}</p>}
+                {errors.password && (
+                  <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.password}
+                  </p>
+                )}
               </div>
-              <InputField name="confirmPassword" label="Confirm" type="password" placeholder="••••••••" required />
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                  Confirm Password <span className="text-[var(--error)]">*</span>
+                </label>
+                <div className="input-with-icon">
+                  <Lock className="input-icon w-4 h-4" />
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className={`input pr-12 ${errors.confirmPassword ? 'border-[var(--error)]' : ''}`}
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    disabled={loading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-[var(--error)] mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.confirmPassword}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Optional Fields Toggle */}
+            <div className="pt-4 border-t border-[var(--border-subtle)]">
+              <button
+                type="button"
+                onClick={() => setShowOptional(!showOptional)}
+                className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <span>{showOptional ? 'Hide' : 'Show'} optional information</span>
+                <ArrowRight 
+                  className={`w-4 h-4 transition-transform ${showOptional ? 'rotate-90' : ''}`} 
+                />
+              </button>
             </div>
 
             {/* Optional Fields */}
-            <div className="pt-2 border-t border-[#222]">
-              <p className="text-xs text-[#666] mb-3">Optional information</p>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <InputField name="phonenumber" label="Phone" type="tel" placeholder="+1 555 123 4567" />
-                  <InputField name="companyname" label="Company" placeholder="Acme Inc." />
+            {showOptional && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-5 pt-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <InputField 
+                    name="phonenumber" 
+                    label="Phone number" 
+                    type="tel" 
+                    placeholder="+1 555 123 4567" 
+                    icon={Phone}
+                  />
+                  <InputField 
+                    name="companyname" 
+                    label="Company name" 
+                    placeholder="Acme Inc." 
+                    icon={Building}
+                  />
                 </div>
-                <InputField name="address1" label="Address" placeholder="123 Main St" />
-                <div className="grid grid-cols-3 gap-3">
+                <InputField 
+                  name="address1" 
+                  label="Address" 
+                  placeholder="123 Main St" 
+                  icon={MapPin}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <InputField name="city" label="City" placeholder="New York" />
                   <InputField name="state" label="State" placeholder="NY" />
-                  <InputField name="postcode" label="Postal" placeholder="10001" />
+                  <InputField name="postcode" label="Postal code" placeholder="10001" />
                 </div>
                 <InputField name="country" label="Country" placeholder="United States" />
-              </div>
-            </div>
-
-            {errors.submit && (
-              <div className="bg-[#2a0a0a] border border-[#3d0f0f] rounded-md px-3 py-2">
-                <p className="text-xs text-[#f87171]">{errors.submit}</p>
-              </div>
+              </motion.div>
             )}
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white hover:bg-[#e5e5e5] text-black text-sm font-medium py-2 px-3 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary w-full mt-6"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  Create Account
+                </>
+              )}
             </button>
           </form>
-        </div>
+
+          {/* Divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[var(--border-subtle)]"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-4 bg-[var(--surface-1)] text-[var(--foreground-muted)]">Already have an account?</span>
+            </div>
+          </div>
+
+          {/* Sign In Link */}
+          <div className="text-center">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-primary)] hover:underline"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign in to your account
+            </Link>
+          </div>
+        </motion.div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-[#666] mt-4">
-          Already have an account?{' '}
-          <Link href="/login" className="text-white hover:underline">
-            Sign in
-          </Link>
-        </p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 text-center text-sm text-[var(--foreground-subtle)]"
+        >
+          <p>
+            By creating an account, you agree to our{' '}
+            <Link href="#" className="text-[var(--accent-primary)] hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="#" className="text-[var(--accent-primary)] hover:underline">
+              Privacy Policy
+            </Link>
+          </p>
+        </motion.div>
       </div>
     </div>
   );

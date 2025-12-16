@@ -69,7 +69,7 @@ export default function TicketsPage() {
       key: 'tid',
       label: 'Ticket #',
       render: (ticket: Ticket) => (
-        <span className="font-mono font-medium text-[#58a6ff]">#{ticket.tid || ticket.id}</span>
+        <span className="font-mono font-medium text-[var(--accent-primary)]">#{ticket.tid || ticket.id}</span>
       ),
     },
     {
@@ -77,8 +77,8 @@ export default function TicketsPage() {
       label: 'Subject',
       render: (ticket: Ticket) => (
         <div>
-          <div className="font-medium text-[#f0f6fc]">{ticket.subject || 'N/A'}</div>
-          <div className="text-xs text-[#8b949e] mt-0.5">{ticket.name || ticket.email}</div>
+          <div className="font-medium text-[var(--foreground)]">{ticket.subject || 'N/A'}</div>
+          <div className="text-xs text-[var(--foreground-muted)] mt-0.5">{ticket.name || ticket.email}</div>
         </div>
       ),
     },
@@ -111,11 +111,11 @@ export default function TicketsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-[#f0f6fc] mb-2">Support Tickets</h1>
-        <p className="text-[#8b949e]">Manage all WHMCS support tickets</p>
+        <h1 className="text-2xl font-semibold text-[var(--foreground)] mb-2">Support Tickets</h1>
+        <p className="text-[var(--foreground-muted)]">Manage all WHMCS support tickets</p>
       </div>
 
-      <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+      <div className="card p-4">
         <div className="flex gap-4 items-center">
           <div className="flex-1">
             <select
@@ -124,7 +124,7 @@ export default function TicketsPage() {
                 setStatusFilter(e.target.value);
                 setPage(0);
               }}
-              className="w-full px-4 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#c9d1d9] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:border-transparent"
+              className="input w-full"
             >
               <option value="">All Statuses</option>
               <option value="Open">Open</option>
@@ -136,7 +136,7 @@ export default function TicketsPage() {
           <button
             onClick={loadTickets}
             disabled={loading}
-            className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-[#c9d1d9] hover:bg-[#30363d] transition-colors disabled:opacity-50"
+            className="btn btn-secondary"
           >
             {loading ? 'Loading...' : 'Refresh'}
           </button>
@@ -144,27 +144,29 @@ export default function TicketsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <div>
-            <p className="text-sm text-red-400 font-medium">Error loading tickets</p>
-            <p className="text-sm text-red-300/80 mt-1">{error}</p>
+        <div className="card p-4 bg-[var(--error-soft)] border border-[var(--error)]/30">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-[var(--error)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>
+              <p className="text-sm text-[var(--error)] font-medium">Error loading tickets</p>
+              <p className="text-sm text-[var(--error)]/80 mt-1">{error}</p>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+      <div className="card">
         <div className="p-6">
           {loading && tickets.length === 0 ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#58a6ff] mb-4"></div>
-              <p className="text-[#8b949e]">Loading tickets...</p>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-primary)] mb-4"></div>
+              <p className="text-[var(--foreground-muted)]">Loading tickets...</p>
             </div>
           ) : (
             <>
@@ -175,22 +177,22 @@ export default function TicketsPage() {
                 emptyMessage="No tickets found"
               />
               {totalResults > 0 && (
-                <div className="mt-4 flex items-center justify-between border-t border-[#30363d] pt-4">
-                  <div className="text-sm text-[#8b949e]">
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--border-subtle)] pt-4">
+                  <div className="text-sm text-[var(--foreground-muted)]">
                     Showing {Math.min(page * limit + 1, totalResults)} to {Math.min((page + 1) * limit, totalResults)} of {totalResults} tickets
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
                       disabled={page === 0 || loading}
-                      className="px-3 py-1.5 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn btn-secondary btn-sm"
                     >
                       Previous
                     </button>
                     <button
                       onClick={() => setPage((p) => p + 1)}
                       disabled={(page + 1) * limit >= totalResults || loading || totalResults === 0}
-                      className="px-3 py-1.5 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn btn-secondary btn-sm"
                     >
                       Next
                     </button>
