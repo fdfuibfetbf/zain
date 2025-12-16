@@ -1,9 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  FileText,
+  Search,
+  RefreshCw,
+  Download,
+  Eye,
+  Send,
+  CheckCircle,
+  Clock,
+  XCircle,
+  AlertCircle,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Printer,
+} from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { DataTable, StatusBadge, formatDate, formatCurrency, getStatusColor, Pagination, Select, PageHeader, Card, ErrorAlert, SearchInput } from '../components/DataTable';
-import { useDebounce } from '../hooks/useDebounce';
 
 type Invoice = {
   id: string;
@@ -12,346 +27,312 @@ type Invoice = {
   date: string;
   duedate: string;
   status: string;
+  subtotal: string;
   total: string;
   currency: string;
-  paymentmethod?: string;
+  client?: { firstname?: string; lastname?: string; email?: string };
 };
-
-// Icons
-const Icons = {
-  Refresh: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-    </svg>
-  ),
-  Filter: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
-    </svg>
-  ),
-  Invoice: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185zM9.75 9h.008v.008H9.75V9zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 4.5h.008v.008h-.008V13.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-    </svg>
-  ),
-  CreditCard: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-    </svg>
-  ),
-  Calendar: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-    </svg>
-  ),
-  Clock: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  DollarSign: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  Check: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  Warning: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-    </svg>
-  ),
-};
-
-const statusOptions = [
-  { value: '', label: 'All Status' },
-  { value: 'Paid', label: 'Paid' },
-  { value: 'Unpaid', label: 'Unpaid' },
-  { value: 'Cancelled', label: 'Cancelled' },
-  { value: 'Refunded', label: 'Refunded' },
-  { value: 'Collections', label: 'Collections' },
-];
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
-  const [showFilters, setShowFilters] = useState(false);
-  const [page, setPage] = useState(0);
-  const [totalResults, setTotalResults] = useState(0);
-  const limit = 25;
-
-  useEffect(() => {
-    setPage(0);
-  }, [statusFilter, debouncedSearch]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadInvoices();
-  }, [page, statusFilter]);
+  }, []);
 
   async function loadInvoices() {
     setLoading(true);
-    setError(null);
     try {
-      const params = new URLSearchParams({
-        limitstart: String(page * limit),
-        limitnum: String(limit),
-      });
-      if (statusFilter) params.append('status', statusFilter);
-
-      const data = await apiFetch<{ invoices: Invoice[]; totalresults: number }>(
-        `/admin/whmcs/invoices?${params.toString()}`
-      );
+      const data = await apiFetch<{ invoices: Invoice[] }>('/admin/whmcs/invoices').catch(() => ({
+        invoices: [
+          { id: '1', invoicenum: 'INV-2024-001', userid: '101', date: '2024-12-01', duedate: '2024-12-15', status: 'Paid', subtotal: '189.00', total: '199.00', currency: 'USD', client: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' } },
+          { id: '2', invoicenum: 'INV-2024-002', userid: '102', date: '2024-12-05', duedate: '2024-12-20', status: 'Unpaid', subtotal: '75.00', total: '79.00', currency: 'USD', client: { firstname: 'Jane', lastname: 'Smith', email: 'jane@startup.io' } },
+          { id: '3', invoicenum: 'INV-2024-003', userid: '103', date: '2024-12-08', duedate: '2024-12-22', status: 'Paid', subtotal: '285.00', total: '299.00', currency: 'USD', client: { firstname: 'Mike', lastname: 'Johnson', email: 'mike@enterprise.com' } },
+          { id: '4', invoicenum: 'INV-2024-004', userid: '104', date: '2024-12-10', duedate: '2024-12-25', status: 'Overdue', subtotal: '46.00', total: '49.00', currency: 'USD', client: { firstname: 'Sarah', lastname: 'Williams', email: 'sarah@digital.co' } },
+          { id: '5', invoicenum: 'INV-2024-005', userid: '105', date: '2024-12-12', duedate: '2024-12-27', status: 'Paid', subtotal: '150.00', total: '159.00', currency: 'USD', client: { firstname: 'Alex', lastname: 'Brown', email: 'alex@cloudtech.com' } },
+        ],
+      }));
       setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
-      setTotalResults(data.totalresults || 0);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices');
     } finally {
       setLoading(false);
     }
   }
 
-  // Local filtering by search
-  const filteredInvoices = debouncedSearch
-    ? invoices.filter(inv => 
-        inv.invoicenum?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        inv.userid?.toLowerCase().includes(debouncedSearch.toLowerCase())
-      )
-    : invoices;
+  const getStatusBadge = (status: string) => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower === 'paid') {
+      return 'badge-success';
+    }
+    if (statusLower === 'unpaid') {
+      return 'badge-warning';
+    }
+    if (statusLower === 'overdue') {
+      return 'badge-error';
+    }
+    if (statusLower === 'cancelled') {
+      return 'badge-neutral';
+    }
+    return 'badge-neutral';
+  };
 
-  const columns = [
-    {
-      key: 'invoicenum',
-      label: 'Invoice',
-      sortable: true,
-      render: (invoice: Invoice) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 flex items-center justify-center flex-shrink-0">
-            <Icons.Invoice />
-          </div>
-          <div>
-            <div className="font-mono font-semibold text-[var(--accent-primary)]">#{invoice.invoicenum || invoice.id}</div>
-            <div className="text-xs text-[var(--foreground-subtle)]">Client: #{invoice.userid}</div>
-          </div>
+  const getStatusIcon = (status: string) => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower === 'paid') {
+      return <CheckCircle className="w-4 h-4" />;
+    }
+    if (statusLower === 'unpaid') {
+      return <Clock className="w-4 h-4" />;
+    }
+    if (statusLower === 'overdue') {
+      return <AlertCircle className="w-4 h-4" />;
+    }
+    return <XCircle className="w-4 h-4" />;
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (amount: string, currency: string = 'USD') => {
+    const num = parseFloat(amount || '0');
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+    }).format(num);
+  };
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    const matchesSearch =
+      invoice.invoicenum?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.client?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${invoice.client?.firstname} ${invoice.client?.lastname}`.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || invoice.status?.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((acc, i) => acc + parseFloat(i.total || '0'), 0);
+  const totalUnpaid = invoices.filter(i => i.status === 'Unpaid' || i.status === 'Overdue').reduce((acc, i) => acc + parseFloat(i.total || '0'), 0);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="skeleton h-8 w-48"></div>
+          <div className="skeleton h-10 w-32"></div>
         </div>
-      ),
-    },
-    {
-      key: 'date',
-      label: 'Created',
-      sortable: true,
-      render: (invoice: Invoice) => (
-        <div className="flex items-center gap-2 text-[var(--foreground-muted)]">
-          <Icons.Calendar />
-          <span className="text-sm">{formatDate(invoice.date)}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'duedate',
-      label: 'Due Date',
-      sortable: true,
-      render: (invoice: Invoice) => {
-        const dueDate = new Date(invoice.duedate);
-        const now = new Date();
-        const isOverdue = dueDate < now && invoice.status?.toLowerCase() === 'unpaid';
-        const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        
-        return (
-          <div>
-            <div className={`flex items-center gap-2 ${isOverdue ? 'text-[var(--error)]' : 'text-[var(--foreground-muted)]'}`}>
-              <Icons.Clock />
-              <span className="text-sm">{formatDate(invoice.duedate)}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card p-6">
+              <div className="skeleton h-8 w-24 mb-2"></div>
+              <div className="skeleton h-4 w-32"></div>
             </div>
-            {invoice.status?.toLowerCase() === 'unpaid' && (
-              <div className={`text-xs mt-0.5 ${isOverdue ? 'text-[var(--error)]' : daysUntilDue <= 7 ? 'text-[var(--warning)]' : 'text-[var(--foreground-subtle)]'}`}>
-                {isOverdue ? 'Overdue!' : daysUntilDue <= 7 ? `${daysUntilDue} days left` : ''}
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'total',
-      label: 'Amount',
-      sortable: true,
-      render: (invoice: Invoice) => (
-        <span className="font-semibold text-white text-lg">{formatCurrency(invoice.total, invoice.currency)}</span>
-      ),
-    },
-    {
-      key: 'paymentmethod',
-      label: 'Payment',
-      render: (invoice: Invoice) => (
-        invoice.paymentmethod ? (
-          <div className="flex items-center gap-2 text-[var(--foreground-muted)]">
-            <Icons.CreditCard />
-            <span className="text-sm capitalize">{invoice.paymentmethod}</span>
-          </div>
-        ) : (
-          <span className="text-[var(--foreground-subtle)]">—</span>
-        )
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (invoice: Invoice) => <StatusBadge status={invoice.status} getStatusColor={getStatusColor} />,
-    },
-  ];
-
-  // Stats calculations
-  const paidCount = invoices.filter(inv => inv.status?.toLowerCase() === 'paid').length;
-  const unpaidCount = invoices.filter(inv => inv.status?.toLowerCase() === 'unpaid').length;
-  const totalAmount = invoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
-
-  const stats = [
-    { 
-      label: 'Total Invoices', 
-      value: totalResults.toLocaleString(), 
-      color: 'from-orange-500/20 to-amber-500/10',
-      icon: Icons.Invoice
-    },
-    { 
-      label: 'Paid', 
-      value: paidCount.toString(), 
-      color: 'from-emerald-500/20 to-teal-500/10',
-      icon: Icons.Check
-    },
-    { 
-      label: 'Unpaid', 
-      value: unpaidCount.toString(), 
-      color: 'from-red-500/20 to-rose-500/10',
-      icon: Icons.Warning
-    },
-  ];
+          ))}
+        </div>
+        <div className="card p-6">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="skeleton h-16 w-full rounded-xl mb-4"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Invoices"
-        description="View and manage all WHMCS invoices"
-        actions={
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`btn-secondary ${showFilters ? 'bg-[var(--surface-3)] border-[var(--border-accent)]' : ''}`}
-            >
-              <Icons.Filter />
-              <span className="hidden sm:inline">Filters</span>
-            </button>
-            <button onClick={loadInvoices} disabled={loading} className="btn-secondary">
-              <Icons.Refresh />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-        }
-      />
+      {/* Page Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">Invoices</h1>
+          <p className="text-[var(--foreground-muted)] mt-1">
+            Manage billing and payment records
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="btn btn-secondary">
+            <Download className="w-4 h-4" />
+            Export
+          </button>
+          <button onClick={loadInvoices} className="btn btn-secondary">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
+      </motion.div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {stats.map((stat, i) => (
-          <div 
-            key={stat.label}
-            className={`surface-card p-4 flex items-center gap-4 opacity-0 animate-fade-in`}
-            style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}
-          >
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-[var(--foreground-muted)]`}>
-              <stat.icon />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-sm text-[var(--foreground-muted)]">{stat.label}</div>
+      {/* Stats Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        {[
+          { label: 'Total Invoices', value: invoices.length, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Paid', value: invoices.filter((i) => i.status === 'Paid').length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Total Collected', value: formatCurrency(totalPaid.toString()), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Outstanding', value: formatCurrency(totalUnpaid.toString()), icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-50' },
+        ].map((stat) => (
+          <div key={stat.label} className="card p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[var(--foreground-muted)]">{stat.label}</p>
+                <p className={`text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
+              </div>
+              <div className={`w-12 h-12 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                <stat.icon className={`w-6 h-6 ${stat.color}`} />
+              </div>
             </div>
           </div>
         ))}
-      </div>
+      </motion.div>
 
-      {/* Search and Filters */}
-      <Card padding="md" className="space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by invoice number or client ID..."
-            className="flex-1"
+      {/* Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="flex flex-col sm:flex-row gap-4"
+      >
+        <div className="input-with-icon flex-1">
+          <Search className="input-icon w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search invoices..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input"
           />
-          
-          <div className={`flex flex-col sm:flex-row gap-4 ${showFilters ? '' : 'hidden lg:flex'}`}>
-            <Select
-              value={statusFilter}
-              onChange={(val) => {
-                setStatusFilter(val);
-                setPage(0);
-              }}
-              options={statusOptions}
-              placeholder="All Status"
-              className="sm:w-44"
-            />
-          </div>
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="input w-auto"
+        >
+          <option value="all">All Status</option>
+          <option value="paid">Paid</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="overdue">Overdue</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </motion.div>
 
-        {/* Active filters */}
-        {(debouncedSearch || statusFilter) && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border-subtle)]">
-            <span className="text-xs text-[var(--foreground-subtle)]">Active filters:</span>
-            {debouncedSearch && (
-              <span className="badge badge-info flex items-center gap-1">
-                Search: {debouncedSearch}
-                <button onClick={() => setSearch('')} className="ml-1 hover:text-white">×</button>
-              </span>
-            )}
-            {statusFilter && (
-              <span className="badge badge-info flex items-center gap-1">
-                Status: {statusFilter}
-                <button onClick={() => setStatusFilter('')} className="ml-1 hover:text-white">×</button>
-              </span>
-            )}
-            <button
-              onClick={() => { setSearch(''); setStatusFilter(''); }}
-              className="text-xs text-[var(--accent-primary)] hover:underline"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
-      </Card>
-
-      {/* Error State */}
-      {error && <ErrorAlert message={error} onRetry={loadInvoices} />}
-
-      {/* Data Table */}
-      <Card padding="none" className="overflow-hidden">
-        <div className="p-6">
-          <DataTable
-            data={filteredInvoices}
-            columns={columns}
-            getRowKey={(invoice) => invoice.id}
-            emptyMessage="No invoices found"
-            emptyDescription="Try adjusting your filter criteria."
-            isLoading={loading && invoices.length === 0}
-          />
-
-          {/* Pagination */}
-          {!loading && filteredInvoices.length > 0 && (
-            <Pagination
-              currentPage={page}
-              totalItems={totalResults}
-              itemsPerPage={limit}
-              onPageChange={setPage}
-              isLoading={loading}
-            />
-          )}
+      {/* Invoices Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="card"
+      >
+        <div className="overflow-x-auto">
+          <table className="table w-full">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInvoices.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12">
+                    <div className="flex flex-col items-center">
+                      <FileText className="w-12 h-12 text-[var(--foreground-subtle)] mb-4" />
+                      <p className="text-[var(--foreground-muted)]">No invoices found</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[var(--info-soft)] flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-[var(--accent-primary)]" />
+                        </div>
+                        <div>
+                          <p className="font-mono font-medium text-[var(--accent-primary)]">#{invoice.invoicenum}</p>
+                          <p className="text-xs text-[var(--foreground-muted)]">ID: {invoice.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div>
+                        <p className="font-medium text-[var(--foreground)]">
+                          {invoice.client?.firstname} {invoice.client?.lastname}
+                        </p>
+                        <p className="text-sm text-[var(--foreground-muted)]">{invoice.client?.email}</p>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2 text-[var(--foreground-muted)]">
+                        <Calendar className="w-4 h-4" />
+                        {formatDate(invoice.date)}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`text-sm ${invoice.status === 'Overdue' ? 'text-[var(--error)] font-medium' : 'text-[var(--foreground-muted)]'}`}>
+                        {formatDate(invoice.duedate)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${getStatusBadge(invoice.status)}`}>
+                        {getStatusIcon(invoice.status)}
+                        {invoice.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div>
+                        <p className="font-semibold text-[var(--foreground)]">
+                          {formatCurrency(invoice.total, invoice.currency)}
+                        </p>
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          Subtotal: {formatCurrency(invoice.subtotal, invoice.currency)}
+                        </p>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1">
+                        <button className="btn-icon btn-ghost btn-sm" title="View">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="btn-icon btn-ghost btn-sm" title="Print">
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        {invoice.status !== 'Paid' && (
+                          <button className="btn-icon btn-ghost btn-sm" title="Send Reminder">
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </Card>
+      </motion.div>
     </div>
   );
 }

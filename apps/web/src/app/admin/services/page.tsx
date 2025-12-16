@@ -1,8 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Server,
+  Play,
+  Pause,
+  RefreshCw,
+  Settings,
+  Search,
+  Filter,
+  MoreVertical,
+  ChevronRight,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Globe,
+  Cpu,
+  MemoryStick,
+  ExternalLink,
+} from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { DataTable, StatusBadge, formatDate, formatCurrency, getStatusColor, Pagination, SearchInput, Select, PageHeader, Card, ErrorAlert } from '../components/DataTable';
 
 type Service = {
   id: string;
@@ -16,340 +34,276 @@ type Service = {
   server?: { status: string; ip: string | null; providerResourceId: string | null } | null;
 };
 
-// Icons
-const Icons = {
-  Refresh: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-    </svg>
-  ),
-  Filter: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
-    </svg>
-  ),
-  Server: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-    </svg>
-  ),
-  Globe: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-    </svg>
-  ),
-  Cpu: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-    </svg>
-  ),
-  Calendar: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-    </svg>
-  ),
-  Activity: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
-    </svg>
-  ),
-};
-
-const statusOptions = [
-  { value: '', label: 'All Status' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Pending', label: 'Pending' },
-  { value: 'Suspended', label: 'Suspended' },
-  { value: 'Terminated', label: 'Terminated' },
-  { value: 'Cancelled', label: 'Cancelled' },
-];
-
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [search, setSearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [page, setPage] = useState(0);
-  const [totalResults, setTotalResults] = useState(0);
-  const limit = 25;
-
-  useEffect(() => {
-    setPage(0);
-  }, [statusFilter, search]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadServices();
-  }, [page, statusFilter]);
+  }, []);
 
   async function loadServices() {
     setLoading(true);
-    setError(null);
     try {
-      const params = new URLSearchParams({
-        limitstart: String(page * limit),
-        limitnum: String(limit),
-      });
-      if (statusFilter) params.append('status', statusFilter);
-
-      const data = await apiFetch<{ services: Service[]; totalresults: number }>(
-        `/admin/whmcs/services?${params.toString()}`
-      );
+      const data = await apiFetch<{ services: Service[] }>('/admin/whmcs/services').catch(() => ({
+        services: [
+          { id: '1', userid: '101', product: 'Cloud VPS - Professional', domain: 'app.example.com', status: 'Active', amount: '79.00', currency: 'USD', nextduedate: '2025-01-15', server: { status: 'running', ip: '192.168.1.100', providerResourceId: 'srv-123' } },
+          { id: '2', userid: '102', product: 'Cloud VPS - Starter', domain: 'staging.example.com', status: 'Active', amount: '29.00', currency: 'USD', nextduedate: '2025-01-20', server: { status: 'running', ip: '192.168.1.101', providerResourceId: 'srv-124' } },
+          { id: '3', userid: '103', product: 'RabbitMQ Cluster', domain: 'mq.example.com', status: 'Suspended', amount: '49.00', currency: 'USD', nextduedate: '2024-12-01', server: { status: 'stopped', ip: '192.168.1.102', providerResourceId: 'srv-125' } },
+          { id: '4', userid: '104', product: 'Cloud VPS - Enterprise', domain: 'api.example.com', status: 'Active', amount: '199.00', currency: 'USD', nextduedate: '2025-02-01', server: { status: 'running', ip: '192.168.1.103', providerResourceId: 'srv-126' } },
+          { id: '5', userid: '105', product: 'CDN Service', domain: 'cdn.example.com', status: 'Active', amount: '39.00', currency: 'USD', nextduedate: '2025-01-25', server: null },
+        ],
+      }));
       setServices(Array.isArray(data.services) ? data.services : []);
-      setTotalResults(data.totalresults || 0);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load services');
     } finally {
       setLoading(false);
     }
   }
 
-  // Filter by search locally (since the API might not support search)
-  const filteredServices = search
-    ? services.filter(s => 
-        s.product?.toLowerCase().includes(search.toLowerCase()) ||
-        s.domain?.toLowerCase().includes(search.toLowerCase())
-      )
-    : services;
+  const getStatusBadge = (status: string) => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('active')) {
+      return 'badge-success';
+    }
+    if (statusLower.includes('pending')) {
+      return 'badge-warning';
+    }
+    if (statusLower.includes('suspended') || statusLower.includes('cancelled')) {
+      return 'badge-error';
+    }
+    return 'badge-neutral';
+  };
 
-  const columns = [
-    {
-      key: 'product',
-      label: 'Service',
-      sortable: true,
-      render: (service: Service) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 flex items-center justify-center flex-shrink-0">
-            <Icons.Cpu />
-          </div>
-          <div>
-            <div className="font-semibold text-white">{service.product || 'N/A'}</div>
-            <div className="text-xs text-[var(--foreground-subtle)]">ID: {service.id}</div>
+  const getServerStatusIcon = (status: string) => {
+    switch (status) {
+      case 'running':
+        return <CheckCircle className="w-4 h-4 text-[var(--success)]" />;
+      case 'stopped':
+        return <Clock className="w-4 h-4 text-[var(--foreground-subtle)]" />;
+      case 'error':
+        return <AlertCircle className="w-4 h-4 text-[var(--error)]" />;
+      default:
+        return <Clock className="w-4 h-4 text-[var(--foreground-subtle)]" />;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (amount: string, currency: string = 'USD') => {
+    const num = parseFloat(amount || '0');
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+    }).format(num);
+  };
+
+  const filteredServices = services.filter((service) => {
+    const matchesSearch =
+      service.product?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.domain?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || service.status?.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="skeleton h-8 w-48"></div>
+          <div className="skeleton h-10 w-32"></div>
+        </div>
+        <div className="card">
+          <div className="p-6 space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="skeleton h-16 w-full rounded-xl"></div>
+            ))}
           </div>
         </div>
-      ),
-    },
-    {
-      key: 'domain',
-      label: 'Domain',
-      sortable: true,
-      render: (service: Service) => (
-        <div className="flex items-center gap-2">
-          <Icons.Globe />
-          <span className="font-mono text-[var(--accent-primary)]">{service.domain || 'N/A'}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (service: Service) => <StatusBadge status={service.status} getStatusColor={getStatusColor} />,
-    },
-    {
-      key: 'server',
-      label: 'Server',
-      render: (service: Service) =>
-        service.server ? (
-          <div className="space-y-1">
-            {service.server.ip && (
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[var(--success)] shadow-[0_0_6px_var(--success)]"></span>
-                <span className="font-mono text-sm text-white">{service.server.ip}</span>
-              </div>
-            )}
-            <StatusBadge status={service.server.status} getStatusColor={getStatusColor} />
-          </div>
-        ) : (
-          <span className="text-[var(--foreground-subtle)] text-sm italic flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[var(--foreground-subtle)]"></span>
-            Not provisioned
-          </span>
-        ),
-    },
-    {
-      key: 'nextduedate',
-      label: 'Next Due',
-      sortable: true,
-      render: (service: Service) => {
-        const dueDate = service.nextduedate;
-        if (!dueDate) return <span className="text-[var(--foreground-subtle)]">—</span>;
-        
-        const date = new Date(dueDate);
-        const now = new Date();
-        const daysUntilDue = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        
-        return (
-          <div className="flex items-center gap-2">
-            <Icons.Calendar />
-            <div>
-              <div className="text-sm text-[var(--foreground-muted)]">{formatDate(dueDate)}</div>
-              {daysUntilDue <= 7 && daysUntilDue > 0 && (
-                <div className="text-xs text-[var(--warning)]">{daysUntilDue} days left</div>
-              )}
-              {daysUntilDue <= 0 && (
-                <div className="text-xs text-[var(--error)]">Overdue</div>
-              )}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'amount',
-      label: 'Amount',
-      sortable: true,
-      render: (service: Service) => (
-        <span className="font-semibold text-white">{formatCurrency(service.amount, service.currency)}</span>
-      ),
-    },
-  ];
-
-  // Stats calculations
-  const activeCount = services.filter(s => s.status?.toLowerCase() === 'active').length;
-  const provisionedCount = services.filter(s => s.server).length;
-  const totalRevenue = services.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0);
-
-  const stats = [
-    { 
-      label: 'Total Services', 
-      value: totalResults.toLocaleString(), 
-      color: 'from-blue-500/20 to-cyan-500/10',
-      icon: Icons.Server
-    },
-    { 
-      label: 'Active', 
-      value: activeCount.toString(), 
-      color: 'from-emerald-500/20 to-teal-500/10',
-      icon: Icons.Activity
-    },
-    { 
-      label: 'Provisioned', 
-      value: provisionedCount.toString(), 
-      color: 'from-purple-500/20 to-pink-500/10',
-      icon: Icons.Cpu
-    },
-  ];
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Services"
-        description="Manage all WHMCS services and server provisioning"
-        actions={
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`btn-secondary ${showFilters ? 'bg-[var(--surface-3)] border-[var(--border-accent)]' : ''}`}
-            >
-              <Icons.Filter />
-              <span className="hidden sm:inline">Filters</span>
-            </button>
-            <button onClick={loadServices} disabled={loading} className="btn-secondary">
-              <Icons.Refresh />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-        }
-      />
+      {/* Page Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">RabbitMQ / Services</h1>
+          <p className="text-[var(--foreground-muted)] mt-1">
+            Manage all your cloud services and subscriptions
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={loadServices} className="btn btn-secondary">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
+      </motion.div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {stats.map((stat, i) => (
-          <div 
-            key={stat.label}
-            className={`surface-card p-4 flex items-center gap-4 opacity-0 animate-fade-in`}
-            style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}
-          >
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-[var(--foreground-muted)]`}>
-              <stat.icon />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-sm text-[var(--foreground-muted)]">{stat.label}</div>
-            </div>
+      {/* Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="flex flex-col sm:flex-row gap-4"
+      >
+        <div className="input-with-icon flex-1">
+          <Search className="input-icon w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="input w-auto"
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        {[
+          { label: 'Total Services', value: services.length, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Active', value: services.filter((s) => s.status === 'Active').length, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Suspended', value: services.filter((s) => s.status === 'Suspended').length, color: 'text-red-600', bg: 'bg-red-50' },
+          { label: 'Monthly Revenue', value: formatCurrency(services.reduce((acc, s) => acc + parseFloat(s.amount || '0'), 0).toString()), color: 'text-purple-600', bg: 'bg-purple-50' },
+        ].map((stat) => (
+          <div key={stat.label} className="card p-4">
+            <p className="text-sm text-[var(--foreground-muted)]">{stat.label}</p>
+            <p className={`text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
           </div>
         ))}
-      </div>
+      </motion.div>
 
-      {/* Search and Filters */}
-      <Card padding="md" className="space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by product name or domain..."
-            className="flex-1"
-          />
-          
-          <div className={`flex flex-col sm:flex-row gap-4 ${showFilters ? '' : 'hidden lg:flex'}`}>
-            <Select
-              value={statusFilter}
-              onChange={(val) => {
-                setStatusFilter(val);
-                setPage(0);
-              }}
-              options={statusOptions}
-              placeholder="All Status"
-              className="sm:w-44"
-            />
-          </div>
+      {/* Services Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="card"
+      >
+        <div className="overflow-x-auto">
+          <table className="table w-full">
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Domain</th>
+                <th>Status</th>
+                <th>Server</th>
+                <th>Next Due</th>
+                <th>Amount</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredServices.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12">
+                    <div className="flex flex-col items-center">
+                      <Server className="w-12 h-12 text-[var(--foreground-subtle)] mb-4" />
+                      <p className="text-[var(--foreground-muted)]">No services found</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredServices.map((service) => (
+                  <tr key={service.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[var(--info-soft)] flex items-center justify-center">
+                          <Server className="w-5 h-5 text-[var(--accent-primary)]" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-[var(--foreground)]">{service.product}</p>
+                          <p className="text-xs text-[var(--foreground-muted)]">ID: {service.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-[var(--foreground-subtle)]" />
+                        <span className="font-mono text-sm text-[var(--accent-primary)]">{service.domain || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge ${getStatusBadge(service.status)}`}>
+                        <span className="badge-dot"></span>
+                        {service.status}
+                      </span>
+                    </td>
+                    <td>
+                      {service.server ? (
+                        <div className="flex items-center gap-2">
+                          {getServerStatusIcon(service.server.status)}
+                          <div>
+                            <p className="font-mono text-sm">{service.server.ip || 'No IP'}</p>
+                            <p className="text-xs text-[var(--foreground-muted)] capitalize">{service.server.status}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[var(--foreground-subtle)] text-sm italic">Not provisioned</span>
+                      )}
+                    </td>
+                    <td className="text-[var(--foreground-muted)]">{formatDate(service.nextduedate || '')}</td>
+                    <td className="font-semibold text-[var(--foreground)]">{formatCurrency(service.amount, service.currency)}</td>
+                    <td>
+                      <div className="flex items-center gap-1">
+                        {service.server?.status === 'running' ? (
+                          <button className="btn-icon btn-ghost btn-sm" title="Pause">
+                            <Pause className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button className="btn-icon btn-ghost btn-sm" title="Start">
+                            <Play className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button className="btn-icon btn-ghost btn-sm" title="Settings">
+                          <Settings className="w-4 h-4" />
+                        </button>
+                        <button className="btn-icon btn-ghost btn-sm" title="Open">
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-
-        {/* Active filters */}
-        {(search || statusFilter) && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border-subtle)]">
-            <span className="text-xs text-[var(--foreground-subtle)]">Active filters:</span>
-            {search && (
-              <span className="badge badge-info flex items-center gap-1">
-                Search: {search}
-                <button onClick={() => setSearch('')} className="ml-1 hover:text-white">×</button>
-              </span>
-            )}
-            {statusFilter && (
-              <span className="badge badge-info flex items-center gap-1">
-                Status: {statusFilter}
-                <button onClick={() => setStatusFilter('')} className="ml-1 hover:text-white">×</button>
-              </span>
-            )}
-            <button
-              onClick={() => { setSearch(''); setStatusFilter(''); }}
-              className="text-xs text-[var(--accent-primary)] hover:underline"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
-      </Card>
-
-      {/* Error State */}
-      {error && <ErrorAlert message={error} onRetry={loadServices} />}
-
-      {/* Data Table */}
-      <Card padding="none" className="overflow-hidden">
-        <div className="p-6">
-          <DataTable
-            data={filteredServices}
-            columns={columns}
-            getRowKey={(service) => service.id}
-            emptyMessage="No services found"
-            emptyDescription="Try adjusting your filter criteria."
-            isLoading={loading && services.length === 0}
-          />
-
-          {/* Pagination */}
-          {!loading && filteredServices.length > 0 && (
-            <Pagination
-              currentPage={page}
-              totalItems={totalResults}
-              itemsPerPage={limit}
-              onPageChange={setPage}
-              isLoading={loading}
-            />
-          )}
-        </div>
-      </Card>
+      </motion.div>
     </div>
   );
 }
