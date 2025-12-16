@@ -127,7 +127,7 @@ export function buildAuthRouter() {
       if (!parsed.success) {
         return res.status(400).json({
           error: 'Validation failed',
-          details: parsed.error.errors.map((e) => ({ field: e.path[0], message: e.message })),
+          details: parsed.error.issues.map((issue) => ({ field: issue.path[0], message: issue.message })),
         });
       }
 

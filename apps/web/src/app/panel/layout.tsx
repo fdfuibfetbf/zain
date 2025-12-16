@@ -8,11 +8,10 @@ import { apiFetch } from '@/lib/api';
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated
     apiFetch('/auth/me')
       .then((data: any) => {
         setUser(data.user || {});
@@ -26,48 +25,62 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [router]);
 
   const navItems = [
-    { href: '/panel', label: 'Overview', icon: '📊', exact: true },
-    { href: '/panel/servers', label: 'VPS Servers', icon: '🖥️' },
-    { href: '/panel/services', label: 'Services', icon: '⚙️' },
-    { href: '/panel/billing', label: 'Billing', icon: '💳' },
-    { href: '/panel/settings', label: 'Settings', icon: '⚙️' },
+    { href: '/panel', label: 'Overview', exact: true },
+    { href: '/panel/servers', label: 'Servers' },
+    { href: '/panel/services', label: 'Services' },
+    { href: '/panel/billing', label: 'Billing' },
+    { href: '/panel/settings', label: 'Settings' },
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#58a6ff] mb-4"></div>
-          <p className="text-[#8b949e]">Loading...</p>
+          <div className="w-5 h-5 border border-[#333] border-t-white rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-xs text-[#666]">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9]">
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-[#21262d] bg-[#161b22] backdrop-blur-sm bg-opacity-80">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-4">
+      <header className="border-b border-[#222] bg-black sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex h-12 items-center justify-between">
+            <div className="flex items-center gap-6">
               <Link href="/panel" className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#58a6ff] to-[#8b5cf6]">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <span className="text-lg font-semibold text-[#f0f6fc]">Panel</span>
+                <svg className="w-4 h-4 text-white" viewBox="0 0 76 65" fill="currentColor">
+                  <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                </svg>
+                <span className="text-sm font-medium">Dashboard</span>
               </Link>
+              
+              {/* Desktop Nav */}
+              <nav className="hidden md:flex items-center gap-1">
+                {navItems.map((item) => {
+                  const isActive = item.exact
+                    ? pathname === item.href
+                    : pathname === item.href || pathname?.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        isActive ? 'bg-[#1a1a1a] text-white' : 'text-[#888] hover:text-white'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
-            <div className="flex items-center gap-4">
+            
+            <div className="flex items-center gap-3">
               {user?.email && (
-                <div className="hidden sm:flex items-center gap-2 text-sm text-[#8b949e]">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#58a6ff] to-[#8b5cf6] flex items-center justify-center text-white text-xs font-medium">
-                    {user.email.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-[#c9d1d9]">{user.email}</span>
-                </div>
+                <span className="text-xs text-[#666] hidden sm:block">{user.email}</span>
               )}
               <button
                 onClick={() => {
@@ -75,7 +88,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                     router.push('/login');
                   });
                 }}
-                className="px-3 py-1.5 text-sm text-[#8b949e] hover:text-[#c9d1d9] transition-colors rounded-md hover:bg-[#21262d]"
+                className="text-xs text-[#666] hover:text-white transition-colors"
               >
                 Sign out
               </button>
@@ -84,65 +97,34 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
-          {/* Sidebar */}
-          <aside className="hidden lg:block">
-            <nav className="space-y-1">
-              {navItems.map((item) => {
-                const isActive =
-                  item.exact
-                    ? pathname === item.href
-                    : pathname === item.href || (item.href !== '/panel' && pathname?.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-[#21262d] text-[#f0f6fc] border border-[#30363d]'
-                        : 'text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22]'
-                    }`}
-                  >
-                    <span className="text-base">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </aside>
-
-          {/* Mobile Navigation */}
-          <div className="lg:hidden mb-6">
-            <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {navItems.map((item) => {
-                const isActive =
-                  item.exact
-                    ? pathname === item.href
-                    : pathname === item.href || (item.href !== '/panel' && pathname?.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                      isActive
-                        ? 'bg-[#21262d] text-[#f0f6fc] border border-[#30363d]'
-                        : 'text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22] border border-transparent'
-                    }`}
-                  >
-                    <span>{item.icon}</span>
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Main Content */}
-          <main className="min-w-0">{children}</main>
+      {/* Mobile Nav */}
+      <div className="md:hidden border-b border-[#222]">
+        <div className="max-w-5xl mx-auto px-4">
+          <nav className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
+            {navItems.map((item) => {
+              const isActive = item.exact
+                ? pathname === item.href
+                : pathname === item.href || pathname?.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-2.5 py-1 text-xs rounded whitespace-nowrap transition-colors ${
+                    isActive ? 'bg-[#1a1a1a] text-white' : 'text-[#888] hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </div>
+
+      {/* Main Content */}
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        {children}
+      </main>
     </div>
   );
 }
-
