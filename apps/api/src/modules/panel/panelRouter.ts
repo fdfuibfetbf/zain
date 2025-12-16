@@ -13,10 +13,52 @@ const actionSchema = z.object({
   action: z.enum(['reboot', 'suspend', 'terminate', 'reinstall', 'power_on', 'power_off']),
 });
 
+function isDemoMode(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.DEMO_MODE !== 'false';
+}
+
+// Demo data for testing without database/WHMCS
+const DEMO_SERVICES = [
+  {
+    serviceId: 1001,
+    productId: 1,
+    name: 'VPS Basic - Demo Server',
+    status: 'Active',
+    server: {
+      status: 'active',
+      ip: '192.168.1.100',
+      providerResourceId: 'demo-server-001',
+    },
+  },
+  {
+    serviceId: 1002,
+    productId: 2,
+    name: 'VPS Pro - Production',
+    status: 'Active',
+    server: {
+      status: 'active',
+      ip: '192.168.1.101',
+      providerResourceId: 'demo-server-002',
+    },
+  },
+  {
+    serviceId: 1003,
+    productId: 1,
+    name: 'VPS Basic - Staging',
+    status: 'Pending',
+    server: null,
+  },
+];
+
 export function buildPanelRouter() {
   const router = Router();
 
   router.get('/services', requireAuth(), async (req, res) => {
+    // Demo mode - return mock data
+    if (isDemoMode()) {
+      return res.json({ services: DEMO_SERVICES });
+    }
+
     const whmcs = await createWhmcsApiClient();
     const out = await whmcs.getClientsProducts({ clientId: req.auth!.whmcsUserId });
     if (out.result !== 'success') return res.status(502).json({ error: out.message ?? 'WHMCS error' });
@@ -56,6 +98,17 @@ export function buildPanelRouter() {
 
     const whmcsServiceId = Number(req.params.serviceId);
     if (!Number.isFinite(whmcsServiceId)) return res.status(400).json({ error: 'Invalid serviceId' });
+
+    // Demo mode - simulate action
+    if (isDemoMode()) {
+      const demoService = DEMO_SERVICES.find(s => s.serviceId === whmcsServiceId);
+      if (!demoService) return res.status(404).json({ error: 'Service not found' });
+      if (!demoService.server) return res.status(409).json({ error: 'Server not provisioned yet' });
+      
+      // Simulate a small delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return res.json({ ok: true, message: `Demo: ${parsed.data.action} action simulated` });
+    }
 
     // Ownership: confirm service exists for this user via WHMCS.
     const whmcs = await createWhmcsApiClient();
@@ -161,6 +214,38 @@ export function buildPanelRouter() {
       const whmcsServiceId = Number(req.params.serviceId);
       if (!Number.isFinite(whmcsServiceId)) return res.status(400).json({ error: 'Invalid serviceId' });
 
+      // Demo mode - return mock data
+      if (isDemoMode()) {
+        const demoService = DEMO_SERVICES.find(s => s.serviceId === whmcsServiceId);
+        if (!demoService) return res.status(404).json({ error: 'Service not found' });
+
+        return res.json({
+          service: {
+            serviceId: demoService.serviceId,
+            productId: demoService.productId,
+            name: demoService.name,
+            status: demoService.status,
+            domain: 'demo.example.com',
+            amount: '29.99',
+            currency: 'USD',
+            nextduedate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+          server: demoService.server ? {
+            id: 'demo-' + demoService.serviceId,
+            status: demoService.server.status,
+            ip: demoService.server.ip,
+            region: 'us-east-1',
+            providerResourceId: demoService.server.providerResourceId,
+            provider: 'Demo Provider',
+            providerType: 'digitalocean',
+            metadata: {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } : null,
+          actions: [],
+        });
+      }
+
       const whmcs = await createWhmcsApiClient();
       const productsOut = await whmcs.getClientsProducts({ clientId: req.auth!.whmcsUserId });
       if (productsOut.result !== 'success') return res.status(502).json({ error: productsOut.message ?? 'WHMCS error' });
@@ -224,6 +309,14 @@ export function buildPanelRouter() {
     try {
       const whmcsServiceId = Number(req.params.serviceId);
       if (!Number.isFinite(whmcsServiceId)) return res.status(400).json({ error: 'Invalid serviceId' });
+
+      // Demo mode - return mock actions
+      if (isDemoMode()) {
+        const demoService = DEMO_SERVICES.find(s => s.serviceId === whmcsServiceId);
+        if (!demoService) return res.status(404).json({ error: 'Service not found' });
+        
+        return res.json({ actions: [] });
+      }
 
       const whmcs = await createWhmcsApiClient();
       const productsOut = await whmcs.getClientsProducts({ clientId: req.auth!.whmcsUserId });

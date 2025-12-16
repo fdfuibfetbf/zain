@@ -14,7 +14,16 @@ declare global {
   }
 }
 
+function isDemoMode(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.DEMO_MODE !== 'false';
+}
+
 async function loadJwtSecret(): Promise<string> {
+  // In demo mode, use fallback secret without database
+  if (isDemoMode()) {
+    return 'dev-insecure-jwt-secret-change-me';
+  }
+
   const row = await prisma.secret.findFirst({
     where: { scope: 'app', name: 'jwt_signing_key', isActive: true },
     orderBy: { version: 'desc' },

@@ -199,22 +199,46 @@ export function buildAuthRouter() {
     try {
       if (!req.auth) return res.status(401).json({ error: 'Not authenticated' });
 
-      // Get user details from WHMCS
-      const whmcs = await createWhmcsApiClient();
-      const clientDetails = await whmcs.getClientDetails({ clientId: req.auth.whmcsUserId });
-      
-      if (clientDetails.result === 'success' && clientDetails.client) {
-        const client = clientDetails.client as any;
+      // Demo users (in development mode)
+      const demoUsers: Record<number, { email: string; firstname: string; lastname: string }> = {
+        1: { email: 'admin@demo.com', firstname: 'Admin', lastname: 'User' },
+        2: { email: 'user@demo.com', firstname: 'Demo', lastname: 'User' },
+      };
+
+      const demoUser = demoUsers[req.auth.whmcsUserId];
+      if (demoUser && process.env.NODE_ENV !== 'production') {
         return res.json({
           user: {
             id: req.auth.whmcsUserId,
-            email: client.email || '',
-            firstname: client.firstname || '',
-            lastname: client.lastname || '',
-            companyname: client.companyname || '',
+            email: demoUser.email,
+            firstname: demoUser.firstname,
+            lastname: demoUser.lastname,
+            companyname: '',
             role: req.auth.role,
           },
         });
+      }
+
+      // Get user details from WHMCS
+      try {
+        const whmcs = await createWhmcsApiClient();
+        const clientDetails = await whmcs.getClientDetails({ clientId: req.auth.whmcsUserId });
+        
+        if (clientDetails.result === 'success' && clientDetails.client) {
+          const client = clientDetails.client as any;
+          return res.json({
+            user: {
+              id: req.auth.whmcsUserId,
+              email: client.email || '',
+              firstname: client.firstname || '',
+              lastname: client.lastname || '',
+              companyname: client.companyname || '',
+              role: req.auth.role,
+            },
+          });
+        }
+      } catch {
+        // WHMCS not configured, return basic info
       }
 
       res.json({

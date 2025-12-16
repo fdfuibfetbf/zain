@@ -10,6 +10,16 @@ import { SecretService } from '../secrets/secretService.js';
 
 const REFRESH_TTL_DAYS = 30;
 
+// Demo accounts for development/testing (disabled in production)
+const DEMO_ACCOUNTS: Record<string, { password: string; role: 'admin' | 'user'; userId: number }> = {
+  'admin@demo.com': { password: 'demo123', role: 'admin', userId: 1 },
+  'user@demo.com': { password: 'demo123', role: 'user', userId: 2 },
+};
+
+function isDemoMode(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.DEMO_MODE !== 'false';
+}
+
 function sha256Hex(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
@@ -47,6 +57,12 @@ export class AuthService {
   }
 
   private async getJwtSigningSecret(): Promise<string> {
+    // In demo mode, use fallback secret without database
+    if (isDemoMode()) {
+      const dev = devFallbackJwtSecret();
+      if (dev) return dev;
+    }
+
     const row = await prisma.secret.findFirst({
       where: { scope: 'app', name: 'jwt_signing_key', isActive: true },
       orderBy: { version: 'desc' },
@@ -64,6 +80,30 @@ export class AuthService {
   }
 
   async login(args: { email: string; password: string; ip?: string; userAgent?: string }) {
+    // Check for demo accounts first (only in non-production)
+    if (isDemoMode()) {
+      const demoAccount = DEMO_ACCOUNTS[args.email.toLowerCase()];
+      if (demoAccount && demoAccount.password === args.password) {
+        const jwtSecret = await this.getJwtSigningSecret();
+        const accessToken = await this.jwt.signAccessToken({ 
+          whmcsUserId: demoAccount.userId, 
+          role: demoAccount.role 
+        }, jwtSecret);
+
+        // In demo mode, use a static refresh token (no database needed)
+        const refreshToken = `demo-refresh-${demoAccount.userId}-${Date.now()}`;
+
+        return {
+          ok: true as const,
+          accessToken,
+          refreshToken,
+          whmcsUserId: demoAccount.userId,
+          role: demoAccount.role,
+        };
+      }
+    }
+
+    // Regular WHMCS authentication
     const whmcs = await this.getWhmcsClient();
     const res = await whmcs.validateLogin({ email: args.email, password: args.password });
     if (res.result !== 'success') {
@@ -104,6 +144,30 @@ export class AuthService {
   }
 
   async refresh(args: { refreshToken: string; ip?: string; userAgent?: string }) {
+    // Handle demo refresh tokens
+    if (isDemoMode() && args.refreshToken.startsWith('demo-refresh-')) {
+      const parts = args.refreshToken.split('-');
+      const userId = parseInt(parts[2], 10);
+      const demoAccount = Object.values(DEMO_ACCOUNTS).find(a => a.userId === userId);
+      
+      if (demoAccount) {
+        const jwtSecret = await this.getJwtSigningSecret();
+        const accessToken = await this.jwt.signAccessToken({ 
+          whmcsUserId: userId, 
+          role: demoAccount.role 
+        }, jwtSecret);
+        const newRefreshToken = `demo-refresh-${userId}-${Date.now()}`;
+        
+        return { 
+          ok: true as const, 
+          accessToken, 
+          refreshToken: newRefreshToken, 
+          whmcsUserId: userId, 
+          role: demoAccount.role 
+        };
+      }
+    }
+
     const refreshTokenHash = sha256Hex(args.refreshToken);
     const session = await prisma.authSession.findUnique({ where: { refreshTokenHash } });
     if (!session) return { ok: false as const, reason: 'Invalid session' };
@@ -133,6 +197,11 @@ export class AuthService {
   }
 
   async logout(args: { refreshToken: string }) {
+    // In demo mode, just return success (no database)
+    if (isDemoMode() && args.refreshToken.startsWith('demo-refresh-')) {
+      return;
+    }
+
     const refreshTokenHash = sha256Hex(args.refreshToken);
     await prisma.authSession.updateMany({
       where: { refreshTokenHash, revokedAt: null },
