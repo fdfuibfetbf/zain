@@ -18,7 +18,7 @@ export default function Home() {
           router.replace('/panel');
         }
       } catch {
-        router.replace('/login');
+        router.replace('/panel/login');
       } finally {
         setChecking(false);
       }

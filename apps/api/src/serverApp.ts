@@ -1,15 +1,18 @@
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { createRequire } from 'node:module';
 import pino from 'pino';
 
 import { buildAuthRouter } from './modules/auth/authRouter.js';
 import { buildAdminRouter } from './modules/admin/adminRouter.js';
-import { buildWhmcsWebhookRouter } from './modules/whmcs/webhooks/whmcsWebhookRouter.js';
 import { buildPanelRouter } from './modules/panel/panelRouter.js';
+import {
+  adminRateLimit,
+  globalRateLimit,
+  panelRateLimit,
+} from './middleware/rateLimits.js';
 
 const require = createRequire(import.meta.url);
 const pinoHttp = require('pino-http') as unknown as (opts?: unknown) => express.RequestHandler;
@@ -40,31 +43,24 @@ export function createApp() {
     }),
   );
 
-  // Webhooks must receive the raw body for signature verification.
-  app.use('/webhooks/whmcs', express.raw({ type: '*/*', limit: '2mb' }), buildWhmcsWebhookRouter());
-
-  // JSON parser for everything else.
+  // JSON parser.
   app.use(express.json({ limit: '1mb' }));
 
-  // Global rate limit (auth has stricter limits applied in its router).
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      limit: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-    }),
-  );
+  // Global catch-all rate limit.
+  app.use(globalRateLimit);
 
   app.get('/health', (_req, res) => {
     res.json({ ok: true });
   });
 
+  // Auth router.
   app.use('/auth', buildAuthRouter());
-  app.use('/admin', buildAdminRouter());
-  app.use('/panel', buildPanelRouter());
+
+  // Admin endpoints.
+  app.use('/admin', adminRateLimit, buildAdminRouter());
+
+  // User panel.
+  app.use('/panel', panelRateLimit, buildPanelRouter());
 
   return app;
 }
-
-

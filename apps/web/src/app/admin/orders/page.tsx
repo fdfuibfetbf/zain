@@ -17,18 +17,19 @@ import {
   Calendar,
   TrendingUp,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { adminApi } from '@/lib/admin-api';
 
 type Order = {
   id: string;
   ordernum: string;
-  userid: string;
+  userid?: string;
   date: string;
   status: string;
-  amount: string;
-  currency: string;
+  amount?: string;
+  currency?: string;
   paymentmethod?: string;
   client?: { firstname?: string; lastname?: string; email?: string };
+  [key: string]: unknown;
 };
 
 export default function OrdersPage() {
@@ -44,16 +45,10 @@ export default function OrdersPage() {
   async function loadOrders() {
     setLoading(true);
     try {
-      const data = await apiFetch<{ orders: Order[] }>('/admin/whmcs/orders').catch(() => ({
-        orders: [
-          { id: '1', ordernum: 'ORD-2024-001', userid: '101', date: '2024-12-15', status: 'Active', amount: '199.00', currency: 'USD', paymentmethod: 'Credit Card', client: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' } },
-          { id: '2', ordernum: 'ORD-2024-002', userid: '102', date: '2024-12-14', status: 'Pending', amount: '79.00', currency: 'USD', paymentmethod: 'PayPal', client: { firstname: 'Jane', lastname: 'Smith', email: 'jane@startup.io' } },
-          { id: '3', ordernum: 'ORD-2024-003', userid: '103', date: '2024-12-13', status: 'Active', amount: '299.00', currency: 'USD', paymentmethod: 'Bank Transfer', client: { firstname: 'Mike', lastname: 'Johnson', email: 'mike@enterprise.com' } },
-          { id: '4', ordernum: 'ORD-2024-004', userid: '104', date: '2024-12-12', status: 'Cancelled', amount: '49.00', currency: 'USD', paymentmethod: 'Credit Card', client: { firstname: 'Sarah', lastname: 'Williams', email: 'sarah@digital.co' } },
-          { id: '5', ordernum: 'ORD-2024-005', userid: '105', date: '2024-12-11', status: 'Active', amount: '159.00', currency: 'USD', paymentmethod: 'Credit Card', client: { firstname: 'Alex', lastname: 'Brown', email: 'alex@cloudtech.com' } },
-        ],
-      }));
-      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      const data = await adminApi.getOrders();
+      setOrders((Array.isArray(data.orders) ? data.orders : []) as Order[]);
+    } catch {
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -117,7 +112,7 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalRevenue = orders.filter(o => o.status !== 'Cancelled').reduce((acc, o) => acc + parseFloat(o.amount || '0'), 0);
+  const totalRevenue = orders.filter(o => o.status !== 'Cancelled').reduce((acc, o) => acc + parseFloat(String(o.amount ?? '0')), 0);
 
   if (loading) {
     return (
@@ -296,7 +291,7 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td className="font-semibold text-[var(--foreground)]">
-                      {formatCurrency(order.amount, order.currency)}
+                      {formatCurrency(order.amount ?? '0', order.currency ?? 'USD')}
                     </td>
                     <td>
                       <button className="btn btn-ghost btn-sm">

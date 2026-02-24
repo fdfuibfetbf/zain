@@ -1,177 +1,97 @@
-export type WhmcsApiResult<T> =
-  | ({ result: 'success' } & T)
-  | { result: 'error'; message?: string };
-
-export type WhmcsConnectionConfig = {
-  baseUrl: string;
-  apiIdentifier: string;
-  apiSecret: string;
-};
+import axios, { AxiosInstance } from 'axios';
+import * as Types from './types.js';
 
 export class WhmcsApiClient {
-  constructor(private readonly cfg: WhmcsConnectionConfig) {}
+    private api: AxiosInstance;
 
-  private apiUrl() {
-    const base = this.cfg.baseUrl.replace(/\/+$/, '');
-    return `${base}/includes/api.php`;
-  }
-
-  async request<T>(action: string, params: Record<string, string>): Promise<WhmcsApiResult<T>> {
-    const body = new URLSearchParams({
-      action,
-      responsetype: 'json',
-      identifier: this.cfg.apiIdentifier,
-      secret: this.cfg.apiSecret,
-      ...params,
-    });
-
-    const res = await fetch(this.apiUrl(), {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body,
-    });
-
-    if (!res.ok) {
-      throw new Error(`WHMCS API HTTP ${res.status}`);
+    constructor(baseUrl: string, identifier: string, secret: string, accessKey?: string) {
+        this.api = axios.create({
+            baseURL: baseUrl.endsWith('/') ? baseUrl + 'includes/api.php' : baseUrl + '/includes/api.php',
+            params: {
+                username: identifier,
+                password: secret,
+                accesskey: accessKey,
+                responsetype: 'json',
+            },
+        });
     }
 
-    const json = (await res.json()) as WhmcsApiResult<T>;
-    return json;
-  }
+    private async post<T>(action: string, data: any = {}): Promise<T & Types.WhmcsBaseResponse> {
+        const response = await this.api.post('', null, {
+            params: { action, ...data },
+        });
+        return response.data;
+    }
 
-  async validateLogin(args: { email: string; password: string }) {
-    // WHMCS ValidateLogin uses `email` + `password2` (per WHMCS API convention).
-    return this.request<{ userid: string }>('ValidateLogin', {
-      email: args.email,
-      password2: args.password,
-    });
-  }
+    // --- ORDERS ---
+    async getOrders(params: any = {}) { return this.post<any>('GetOrders', params); }
+    async addOrder(params: any) { return this.post<any>('AddOrder', params); }
+    async acceptOrder(params: { orderid: number }) { return this.post<any>('AcceptOrder', params); }
+    async cancelOrder(params: { orderid: number }) { return this.post<any>('CancelOrder', params); }
+    async deleteOrder(params: { orderid: number }) { return this.post<any>('DeleteOrder', params); }
+    async getOrderStatuses() { return this.post<any>('GetOrderStatuses'); }
 
-  async getClientDetails(args: { clientId: number }) {
-    return this.request<{ client: { id: string; groupid?: string } }>('GetClientsDetails', {
-      clientid: String(args.clientId),
-      stats: 'false',
-    });
-  }
+    // --- BILLING ---
+    async getInvoices(params: any = {}) { return this.post<any>('GetInvoices', params); }
+    async getInvoice(params: { invoiceid: number }) { return this.post<any>('GetInvoice', params); }
+    async createInvoice(params: any) { return this.post<any>('CreateInvoice', params); }
+    async updateInvoice(params: any) { return this.post<any>('UpdateInvoice', params); }
+    async addInvoicePayment(params: any) { return this.post<any>('AddInvoicePayment', params); }
+    async getTransactions(params: any = {}) { return this.post<any>('GetTransactions', params); }
+    async addTransaction(params: any) { return this.post<any>('AddTransaction', params); }
+    async getCurrencies() { return this.post<any>('GetCurrencies'); }
 
-  async updateClientProductDedicatedIp(args: { serviceId: number; ip: string }) {
-    return this.request<Record<string, unknown>>('UpdateClientProduct', {
-      serviceid: String(args.serviceId),
-      dedicatedip: args.ip,
-    });
-  }
+    // --- CLIENTS ---
+    async getClients(params: any = {}) { return this.post<any>('GetClients', params); }
+    async getClientDetails(params: { clientid?: number; email?: string }) { return this.post<any>('GetClientsDetails', params); }
+    async addClient(params: any) { return this.post<any>('AddClient', params); }
+    async updateClient(params: any) { return this.post<any>('UpdateClient', params); }
+    async deleteClient(params: { clientid: number }) { return this.post<any>('DeleteClient', params); }
+    async getClientGroups() { return this.post<any>('GetClientGroups'); }
 
-  async getClientsProducts(args: { clientId: number }) {
-    return this.request<{ products?: { product?: any[] } }>('GetClientsProducts', {
-      clientid: String(args.clientId),
-    });
-  }
+    // --- PRODUCTS / SERVICES ---
+    async getProducts(params: any = {}) { return this.post<any>('GetProducts', params); }
+    async getClientsProducts(params: any = {}) { return this.post<any>('GetClientsProducts', params); }
+    async updateClientProduct(params: any) { return this.post<any>('UpdateClientProduct', params); }
+    async upgradeProduct(params: any) { return this.post<any>('UpgradeProduct', params); }
 
-  async getOrders(args?: { limitstart?: number; limitnum?: number; status?: string }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.status) params.status = args.status;
-    return this.request<{ orders?: { order?: any[] }; totalresults?: string }>('GetOrders', params);
-  }
+    // --- MODULE ACTIONS ---
+    async moduleCreate(params: { serviceid: number }) { return this.post<any>('ModuleCreate', params); }
+    async moduleSuspend(params: { serviceid: number; suspendreason?: string }) { return this.post<any>('ModuleSuspend', params); }
+    async moduleUnsuspend(params: { serviceid: number }) { return this.post<any>('ModuleUnsuspend', params); }
+    async moduleTerminate(params: { serviceid: number }) { return this.post<any>('ModuleTerminate', params); }
+    async moduleChangePackage(params: { serviceid: number }) { return this.post<any>('ModuleChangePackage', params); }
+    async moduleCustom(params: { serviceid: number; func_name: string }) { return this.post<any>('ModuleCustom', params); }
 
-  async getClients(args?: { limitstart?: number; limitnum?: number; search?: string }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.search) params.search = args.search;
-    return this.request<{ clients?: { client?: any[] }; totalresults?: string }>('GetClients', params);
-  }
+    // --- SUPPORT ---
+    async getTickets(params: any = {}) { return this.post<any>('GetTickets', params); }
+    async getTicket(params: { ticketid: number }) { return this.post<any>('GetTicket', params); }
+    async openTicket(params: any) { return this.post<any>('OpenTicket', params); }
+    async addTicketReply(params: any) { return this.post<any>('AddTicketReply', params); }
+    async getSupportDepartments() { return this.post<any>('GetSupportDepartments'); }
+    async getSupportStatuses() { return this.post<any>('GetSupportStatuses'); }
 
-  async getAllServices(args?: { limitstart?: number; limitnum?: number; status?: string }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.status) params.status = args.status;
-    return this.request<{ services?: { service?: any[] }; totalresults?: string }>('GetServices', params);
-  }
+    // --- DOMAINS ---
+    async getClientsDomains(params: any = {}) { return this.post<any>('GetClientsDomains', params); }
+    async domainRegister(params: { domainid: number }) { return this.post<any>('DomainRegister', params); }
+    async domainRenew(params: { domainid: number }) { return this.post<any>('DomainRenew', params); }
+    async domainTransfer(params: { domainid: number }) { return this.post<any>('DomainTransfer', params); }
+    async domainUpdateNameservers(params: any) { return this.post<any>('DomainUpdateNameservers', params); }
 
-  async getInvoices(args?: { limitstart?: number; limitnum?: number; status?: string }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.status) params.status = args.status;
-    return this.request<{ invoices?: { invoice?: any[] }; totalresults?: string }>('GetInvoices', params);
-  }
+    // --- USERS ---
+    async getUsers(params: any = {}) { return this.post<any>('GetUsers', params); }
+    async addUser(params: any) { return this.post<any>('AddUser', params); }
+    async updateUser(params: any) { return this.post<any>('UpdateUser', params); }
+    async validateLogin(params: { email: string; password: string }) { return this.post<any>('ValidateLogin', params); }
 
-  async getProducts(args?: { limitstart?: number; limitnum?: number; gid?: number }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.gid !== undefined) params.gid = String(args.gid);
-    return this.request<{ products?: { product?: any[] }; totalresults?: string }>('GetProducts', params);
-  }
+    // --- SYSTEM ---
+    async getStats() { return this.post<any>('GetStats'); }
+    async getActivityLog(params: any = {}) { return this.post<any>('GetActivityLog', params); }
+    async logActivity(params: { description: string; clientid?: number }) { return this.post<any>('LogActivity', params); }
+    async getConfigurationValue(params: { setting: string }) { return this.post<any>('GetConfigurationValue', params); }
+    async setConfigurationValue(params: { setting: string; value: string }) { return this.post<any>('SetConfigurationValue', params); }
 
-  async getDomains(args?: { limitstart?: number; limitnum?: number; clientid?: number; status?: string }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.clientid !== undefined) params.clientid = String(args.clientid);
-    if (args?.status) params.status = args.status;
-    return this.request<{ domains?: { domain?: any[] }; totalresults?: string }>('GetClientsDomains', params);
-  }
-
-  async getTickets(args?: { limitstart?: number; limitnum?: number; status?: string; deptid?: number }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.status) params.status = args.status;
-    if (args?.deptid !== undefined) params.deptid = String(args.deptid);
-    return this.request<{ tickets?: { ticket?: any[] }; totalresults?: string }>('GetTickets', params);
-  }
-
-  async getTransactions(args?: { limitstart?: number; limitnum?: number; status?: string }) {
-    const params: Record<string, string> = {};
-    if (args?.limitstart !== undefined) params.limitstart = String(args.limitstart);
-    if (args?.limitnum !== undefined) params.limitnum = String(args.limitnum);
-    if (args?.status) params.status = args.status;
-    return this.request<{ transactions?: { transaction?: any[] }; totalresults?: string }>('GetTransactions', params);
-  }
-
-  async getCurrencies() {
-    return this.request<{ currencies?: { currency?: any[] } }>('GetCurrencies', {});
-  }
-
-  async getPaymentMethods() {
-    return this.request<{ paymentmethods?: { paymentmethod?: any[] } }>('GetPaymentMethods', {});
-  }
-
-  async addClient(args: {
-    firstname: string;
-    lastname: string;
-    email: string;
-    password2: string;
-    phonenumber?: string;
-    companyname?: string;
-    address1?: string;
-    city?: string;
-    state?: string;
-    postcode?: string;
-    country?: string;
-  }) {
-    const params: Record<string, string> = {
-      firstname: args.firstname,
-      lastname: args.lastname,
-      email: args.email,
-      password2: args.password2,
-    };
-    if (args.phonenumber) params.phonenumber = args.phonenumber;
-    if (args.companyname) params.companyname = args.companyname;
-    if (args.address1) params.address1 = args.address1;
-    if (args.city) params.city = args.city;
-    if (args.state) params.state = args.state;
-    if (args.postcode) params.postcode = args.postcode;
-    if (args.country) params.country = args.country;
-    
-    return this.request<{ clientid: string }>('AddClient', params);
-  }
+    // --- OAUTH ---
+    async listOAuthCredentials() { return this.post<any>('ListOAuthCredentials'); }
+    async createOAuthCredential(params: any) { return this.post<any>('CreateOAuthCredential', params); }
 }
-
-

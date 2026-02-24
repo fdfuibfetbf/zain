@@ -19,6 +19,16 @@ import {
   Cloud,
   Bell,
   Search,
+  UserCircle,
+  HardDrive,
+  Database,
+  Globe,
+  Mail,
+  Layers,
+  ShoppingBag,
+  Sparkles,
+  Monitor,
+  ChevronRight,
 } from 'lucide-react';
 
 type NavItem = {
@@ -26,47 +36,96 @@ type NavItem = {
   label: string;
   icon: React.ElementType;
   exact?: boolean;
+  children?: NavItem[];
 };
+
+const AUTH_PATHS = ['/panel/login', '/panel/register'];
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isAuthPage = pathname ? AUTH_PATHS.includes(pathname) : false;
   const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (isAuthPage) {
+      setLoading(false);
+      return;
+    }
     apiFetch<{ user: { email: string; role: string } }>('/auth/me')
       .then((data) => {
         setUser(data.user);
       })
       .catch(() => {
-        router.push('/login');
+        router.push('/panel/login');
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [router]);
+  }, [router, isAuthPage]);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 
   const navItems: NavItem[] = [
-    { href: '/panel', label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: '/panel/servers', label: 'Servers', icon: Server },
-    { href: '/panel/services', label: 'Services', icon: Package },
+    { href: '/panel', label: 'Home', icon: LayoutDashboard, exact: true },
+    {
+      href: '/panel/websites',
+      label: 'Websites',
+      icon: Monitor,
+      children: [
+        { href: '/panel/websites', label: 'Websites list', icon: Monitor },
+        { href: '/panel/websites/migrations', label: 'Migrations', icon: Database },
+      ],
+    },
+    {
+      href: '/panel/domains',
+      label: 'Domains',
+      icon: Globe,
+      children: [
+        { href: '/panel/domains', label: 'Domain portfolio', icon: Globe },
+        { href: '/panel/domains/new', label: 'Get a new domain', icon: Globe },
+        { href: '/panel/domains/transfers', label: 'Transfers', icon: Globe },
+      ],
+    },
+    { href: '/panel/horizons', label: 'Horizons', icon: Layers },
+    { href: '/panel/emails', label: 'Emails', icon: Mail },
+    { href: '/panel/vps', label: 'VPS', icon: Server },
+    {
+      href: '/panel/all-services',
+      label: 'All services',
+      icon: ShoppingBag,
+      children: [
+        { href: '/panel/marketplace', label: 'Marketplace', icon: ShoppingBag },
+        { href: '/panel/ai-tools', label: 'AI tools', icon: Sparkles },
+      ],
+    },
     { href: '/panel/billing', label: 'Billing', icon: CreditCard },
     { href: '/panel/settings', label: 'Settings', icon: Settings },
+    { href: '/panel/openid-connect', label: 'OpenID Connect', icon: UserCircle },
+    { href: '/panel/storage-settings', label: 'Storage Settings', icon: HardDrive },
+    { href: '/panel/automatic-backups', label: 'Automatic Backups', icon: Database },
   ];
 
   const handleLogout = () => {
     apiFetch('/auth/logout', { method: 'POST' }).then(() => {
-      router.push('/login');
+      router.push('/panel/login');
     });
   };
+
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen bg-[var(--background)]">
+        {children}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -82,11 +141,61 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const toggleExpand = (href: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) {
+        next.delete(href);
+      } else {
+        next.add(href);
+      }
+      return next;
+    });
+  };
+
   const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = item.exact
       ? pathname === item.href
       : pathname === item.href || (item.href !== '/panel' && pathname?.startsWith(item.href));
     const Icon = item.icon;
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedItems.has(item.href);
+
+    if (hasChildren) {
+      return (
+        <div>
+          <button
+            onClick={() => toggleExpand(item.href)}
+            className={`nav-item w-full ${isActive ? 'active' : ''}`}
+          >
+            <Icon className="nav-icon" />
+            <span className="flex-1 text-left">{item.label}</span>
+            <ChevronRight
+              className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            />
+          </button>
+          {isExpanded && (
+            <div className="ml-4 mt-1 space-y-1">
+              {item.children!.map((child) => {
+                const childIsActive =
+                  pathname === child.href || (child.href !== '/panel' && pathname?.startsWith(child.href));
+                const ChildIcon = child.icon;
+                return (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={`nav-item ${childIsActive ? 'active' : ''}`}
+                  >
+                    <ChildIcon className="nav-icon" />
+                    <span className="flex-1">{child.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link
