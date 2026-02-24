@@ -207,7 +207,7 @@ export default function ForgotPasswordPage() {
           {/* Back to Login */}
           <div className="mt-8 pt-6 border-t border-[var(--border-subtle)]">
             <Link
-              href="/login"
+              href="/panel/login"
               className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-primary)] hover:underline"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -225,7 +225,7 @@ export default function ForgotPasswordPage() {
         >
           <p>
             Remember your password?{' '}
-            <Link href="/login" className="text-[var(--accent-primary)] hover:underline">
+            <Link href="/panel/login" className="text-[var(--accent-primary)] hover:underline">
               Sign in
             </Link>
           </p>

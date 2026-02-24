@@ -18,19 +18,20 @@ import {
   TrendingUp,
   Printer,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { adminApi } from '@/lib/admin-api';
 
 type Invoice = {
   id: string;
-  invoicenum: string;
-  userid: string;
+  invoicenum?: string;
+  userid?: string;
   date: string;
-  duedate: string;
+  duedate?: string;
   status: string;
-  subtotal: string;
+  subtotal?: string;
   total: string;
-  currency: string;
+  currency?: string;
   client?: { firstname?: string; lastname?: string; email?: string };
+  [key: string]: unknown;
 };
 
 export default function InvoicesPage() {
@@ -46,16 +47,10 @@ export default function InvoicesPage() {
   async function loadInvoices() {
     setLoading(true);
     try {
-      const data = await apiFetch<{ invoices: Invoice[] }>('/admin/whmcs/invoices').catch(() => ({
-        invoices: [
-          { id: '1', invoicenum: 'INV-2024-001', userid: '101', date: '2024-12-01', duedate: '2024-12-15', status: 'Paid', subtotal: '189.00', total: '199.00', currency: 'USD', client: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' } },
-          { id: '2', invoicenum: 'INV-2024-002', userid: '102', date: '2024-12-05', duedate: '2024-12-20', status: 'Unpaid', subtotal: '75.00', total: '79.00', currency: 'USD', client: { firstname: 'Jane', lastname: 'Smith', email: 'jane@startup.io' } },
-          { id: '3', invoicenum: 'INV-2024-003', userid: '103', date: '2024-12-08', duedate: '2024-12-22', status: 'Paid', subtotal: '285.00', total: '299.00', currency: 'USD', client: { firstname: 'Mike', lastname: 'Johnson', email: 'mike@enterprise.com' } },
-          { id: '4', invoicenum: 'INV-2024-004', userid: '104', date: '2024-12-10', duedate: '2024-12-25', status: 'Overdue', subtotal: '46.00', total: '49.00', currency: 'USD', client: { firstname: 'Sarah', lastname: 'Williams', email: 'sarah@digital.co' } },
-          { id: '5', invoicenum: 'INV-2024-005', userid: '105', date: '2024-12-12', duedate: '2024-12-27', status: 'Paid', subtotal: '150.00', total: '159.00', currency: 'USD', client: { firstname: 'Alex', lastname: 'Brown', email: 'alex@cloudtech.com' } },
-        ],
-      }));
-      setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+      const data = await adminApi.getInvoices();
+      setInvoices((Array.isArray(data.invoices) ? data.invoices : []) as Invoice[]);
+    } catch {
+      setInvoices([]);
     } finally {
       setLoading(false);
     }
@@ -122,8 +117,8 @@ export default function InvoicesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((acc, i) => acc + parseFloat(i.total || '0'), 0);
-  const totalUnpaid = invoices.filter(i => i.status === 'Unpaid' || i.status === 'Overdue').reduce((acc, i) => acc + parseFloat(i.total || '0'), 0);
+  const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((acc, i) => acc + parseFloat(String(i.total ?? '0')), 0);
+  const totalUnpaid = invoices.filter(i => i.status === 'Unpaid' || i.status === 'Overdue').reduce((acc, i) => acc + parseFloat(String(i.total ?? '0')), 0);
 
   if (loading) {
     return (
@@ -292,7 +287,7 @@ export default function InvoicesPage() {
                     </td>
                     <td>
                       <span className={`text-sm ${invoice.status === 'Overdue' ? 'text-[var(--error)] font-medium' : 'text-[var(--foreground-muted)]'}`}>
-                        {formatDate(invoice.duedate)}
+                        {formatDate(invoice.duedate ?? '')}
                       </span>
                     </td>
                     <td>
@@ -304,10 +299,10 @@ export default function InvoicesPage() {
                     <td>
                       <div>
                         <p className="font-semibold text-[var(--foreground)]">
-                          {formatCurrency(invoice.total, invoice.currency)}
+                          {formatCurrency(invoice.total, invoice.currency ?? 'USD')}
                         </p>
                         <p className="text-xs text-[var(--foreground-muted)]">
-                          Subtotal: {formatCurrency(invoice.subtotal, invoice.currency)}
+                          Subtotal: {formatCurrency(invoice.subtotal ?? '0', invoice.currency ?? 'USD')}
                         </p>
                       </div>
                     </td>

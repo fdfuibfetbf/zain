@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setUser(data.user);
       })
       .catch(() => {
-        router.push('/login');
+        router.push('/admin/login');
       })
       .finally(() => {
         setLoading(false);
@@ -117,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => {
     apiFetch('/auth/logout', { method: 'POST' }).then(() => {
-      router.push('/login');
+      router.push('/admin/login');
     });
   };
 

@@ -34,7 +34,7 @@ import {
   MemoryStick,
   Wifi,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { adminApi } from '@/lib/admin-api';
 
 // Chart data
 const usageData = [
@@ -116,10 +116,10 @@ export default function AdminDashboardPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const statsData = await apiFetch<{ stats: Stats }>('/admin/whmcs/stats').catch(() => ({
-        stats: { totalOrders: 156, totalClients: 2847, totalServices: 432, totalInvoices: 1893 },
-      }));
-      setStats(statsData.stats);
+      const statsData = await adminApi.getStats();
+      setStats(statsData.stats ?? null);
+    } catch {
+      // Leave stats null — UI shows skeleton / zero values
     } finally {
       setLoading(false);
     }
@@ -431,11 +431,11 @@ export default function AdminDashboardPage() {
               <div className="text-[var(--foreground-muted)]">Estimated Hourly cost</div>
               <div className="text-center text-[var(--foreground-muted)]">Engines</div>
               <div className="text-right text-[var(--foreground-muted)]">Price</div>
-              
+
               <div className="font-semibold text-[var(--foreground)]">234</div>
               <div className="text-center font-semibold text-[var(--foreground)]">4</div>
               <div className="text-right font-semibold text-[var(--foreground)]">$71</div>
-              
+
               <div className="flex items-center gap-2">
                 <MemoryStick className="w-4 h-4 text-[var(--success)]" />
                 <span className="text-[var(--foreground-muted)]">Memory (GB)</span>
@@ -444,21 +444,21 @@ export default function AdminDashboardPage() {
               <div className="text-right flex items-center justify-end gap-1">
                 <span className="w-2 h-2 rounded-full bg-[var(--success)]"></span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-[var(--success)]" />
                 <span className="text-[var(--foreground-muted)]">CPU (Core)</span>
               </div>
               <div className="text-center font-semibold">3.4</div>
               <div className="text-right font-semibold">$29</div>
-              
+
               <div className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-[var(--warning)]" />
                 <span className="text-[var(--foreground-muted)]">Disk (GB)</span>
               </div>
               <div className="text-center font-semibold">1</div>
               <div className="text-right text-[var(--foreground-muted)]">Free</div>
-              
+
               <div className="flex items-center gap-2">
                 <Wifi className="w-4 h-4 text-[var(--success)]" />
                 <span className="text-[var(--foreground-muted)]">IPv4</span>
@@ -466,14 +466,14 @@ export default function AdminDashboardPage() {
               <div className="text-center font-semibold">3</div>
               <div className="text-right font-semibold text-[var(--success)]">$2400</div>
             </div>
-            
+
             <div className="divider"></div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-[var(--foreground-muted)]">Total</span>
               <span className="text-2xl font-bold text-[var(--foreground)]">1,200 USD</span>
             </div>
-            
+
             <button className="btn btn-primary w-full mt-4">
               <Cloud className="w-4 h-4" />
               Create cloud service
@@ -500,11 +500,10 @@ export default function AdminDashboardPage() {
           <Link
             key={setting}
             href="/admin/cdn-dns"
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              index === 0
-                ? 'bg-[var(--accent-primary)] text-white shadow-lg shadow-blue-500/20'
-                : 'bg-[var(--surface-2)] text-[var(--foreground-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]'
-            }`}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${index === 0
+              ? 'bg-[var(--accent-primary)] text-white shadow-lg shadow-blue-500/20'
+              : 'bg-[var(--surface-2)] text-[var(--foreground-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]'
+              }`}
           >
             {setting}
           </Link>

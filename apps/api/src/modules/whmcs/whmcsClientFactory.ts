@@ -1,30 +1,14 @@
-import { prisma } from '../../prisma/client.js';
-import { getKmsClientForKeyId } from '../crypto/kms/kmsFactory.js';
-import { SecretService } from '../secrets/secretService.js';
 import { WhmcsApiClient } from './whmcsApiClient.js';
 
 export async function createWhmcsApiClient(): Promise<WhmcsApiClient> {
-  const conn = await prisma.whmcsConnection.findFirst({
-    where: { status: 'connected' },
-    select: { baseUrl: true, apiIdentifier: true, apiSecretSecretId: true },
-  });
-  if (!conn?.apiSecretSecretId) {
-    throw new Error('WHMCS connection is not configured (missing api secret)');
-  }
+    const baseUrl = process.env.WHMCS_URL;
+    const identifier = process.env.WHMCS_API_IDENTIFIER;
+    const secret = process.env.WHMCS_API_SECRET;
+    const accessKey = process.env.WHMCS_API_ACCESS_KEY;
 
-  const secretRow = await prisma.secret.findUnique({ where: { id: conn.apiSecretSecretId } });
-  if (!secretRow) throw new Error('WHMCS API secret not found');
-  if (!secretRow.isActive) throw new Error('WHMCS API secret is not active');
+    if (!baseUrl || !identifier || !secret) {
+        throw new Error('WHMCS configuration missing in environment variables');
+    }
 
-  const kms = await getKmsClientForKeyId(secretRow.kmsKeyId);
-  const secrets = new SecretService(kms);
-  const apiSecret = await secrets.decryptSecretValue({ secretId: secretRow.id });
-
-  return new WhmcsApiClient({
-    baseUrl: conn.baseUrl,
-    apiIdentifier: conn.apiIdentifier,
-    apiSecret,
-  });
+    return new WhmcsApiClient(baseUrl, identifier, secret, accessKey);
 }
-
-

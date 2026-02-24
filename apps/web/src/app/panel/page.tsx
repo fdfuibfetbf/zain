@@ -13,7 +13,7 @@ import {
   Package,
   Globe,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { panelApi } from '@/lib/panel-api';
 
 type Service = {
   serviceId: number;
@@ -44,19 +44,25 @@ export default function PanelDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [servicesData] = await Promise.all([
-        apiFetch<{ services: Service[] }>('/panel/services').catch(() => ({ services: [] })),
+      const [servicesData, invoicesData] = await Promise.all([
+        panelApi.getServices(),
+        panelApi.getInvoices(),
       ]);
 
-      setServices(servicesData.services || []);
-      
-      // Calculate stats
-      const activeServices = servicesData.services?.filter((s) => s.status === 'Active').length || 0;
+      const services = (servicesData as any).services ?? [];
+      setServices(services);
+
+      const invoices = (invoicesData as any).invoices ?? [];
+      const activeServices = services.filter((s: Service) => s.status === 'Active').length;
+      const pendingInvoices = invoices.filter((i: { status: string }) =>
+        i.status === 'Unpaid' || i.status === 'Overdue'
+      ).length;
+
       setStats({
-        totalServices: servicesData.services?.length || 0,
+        totalServices: services.length,
         activeServices,
-        totalInvoices: 0,
-        pendingInvoices: 0,
+        totalInvoices: invoices.length,
+        pendingInvoices,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');

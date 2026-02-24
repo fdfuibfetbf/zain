@@ -17,7 +17,7 @@ import {
   Download,
   Filter,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { adminApi } from '@/lib/admin-api';
 
 type Client = {
   id: string;
@@ -44,16 +44,10 @@ export default function ClientsPage() {
   async function loadClients() {
     setLoading(true);
     try {
-      const data = await apiFetch<{ clients: Client[] }>('/admin/whmcs/clients').catch(() => ({
-        clients: [
-          { id: '1', firstname: 'John', lastname: 'Doe', email: 'john@example.com', companyname: 'Tech Corp', status: 'Active', datecreated: '2024-01-15', phonenumber: '+1 234 567 890', country: 'United States' },
-          { id: '2', firstname: 'Jane', lastname: 'Smith', email: 'jane@startup.io', companyname: 'Startup Inc', status: 'Active', datecreated: '2024-02-20', phonenumber: '+44 789 123 456', country: 'United Kingdom' },
-          { id: '3', firstname: 'Mike', lastname: 'Johnson', email: 'mike@enterprise.com', companyname: 'Enterprise Ltd', status: 'Inactive', datecreated: '2024-03-10', phonenumber: '+49 321 654 987', country: 'Germany' },
-          { id: '4', firstname: 'Sarah', lastname: 'Williams', email: 'sarah@digital.co', companyname: 'Digital Agency', status: 'Active', datecreated: '2024-04-05', phonenumber: '+1 555 123 789', country: 'Canada' },
-          { id: '5', firstname: 'Alex', lastname: 'Brown', email: 'alex@cloudtech.com', companyname: '', status: 'Active', datecreated: '2024-05-12', phonenumber: '+61 432 109 876', country: 'Australia' },
-        ],
-      }));
+      const data = await adminApi.getClients();
       setClients(Array.isArray(data.clients) ? data.clients : []);
+    } catch {
+      setClients([]);
     } finally {
       setLoading(false);
     }
